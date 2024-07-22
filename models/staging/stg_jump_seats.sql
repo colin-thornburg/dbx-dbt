@@ -1,5 +1,5 @@
 WITH source AS (
-    SELECT * FROM ref{{'jump_seats'}}
+    SELECT * FROM {{ ref('jump_seats') }}
 )
 
 SELECT
