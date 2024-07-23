@@ -1,5 +1,14 @@
+{{ config(
+    materialized='incremental',
+    unique_key=['flight_key', 'cabin_class'],
+    on_schema_change='fail'
+) }}
+
 WITH authorized_pax AS (
     SELECT * FROM {{ ref('int_authorized_pax_qty') }}
+    {% if is_incremental() %}
+    WHERE sabre_transaction_timestamp > (SELECT COALESCE(MAX(sabre_transaction_timestamp), '1900-01-01') FROM {{ this }})
+    {% endif %}
 )
 
 SELECT
@@ -8,42 +17,32 @@ SELECT
     departure_date,
     departure_airport,
     flight_key,
-    'F' AS cabin_class,
-    first_class_authorized_pax AS authorized_pax_qty
-FROM authorized_pax
-
-UNION ALL
-
-SELECT
-    airline_code,
-    flight_number,
-    departure_date,
-    departure_airport,
-    flight_key,
-    'C' AS cabin_class,
-    business_class_authorized_pax AS authorized_pax_qty
-FROM authorized_pax
-
-UNION ALL
-
-SELECT
-    airline_code,
-    flight_number,
-    departure_date,
-    departure_airport,
-    flight_key,
-    'W' AS cabin_class,
-    premium_economy_authorized_pax AS authorized_pax_qty
-FROM authorized_pax
-
-UNION ALL
-
-SELECT
-    airline_code,
-    flight_number,
-    departure_date,
-    departure_airport,
-    flight_key,
-    'Y' AS cabin_class,
-    economy_authorized_pax AS authorized_pax_qty
-FROM authorized_pax
+    cabin_class,
+    authorized_pax_qty,
+    sabre_transaction_timestamp
+FROM (
+    SELECT 
+        *,
+        'F' as cabin_class,
+        first_class_authorized_pax as authorized_pax_qty
+    FROM authorized_pax
+    UNION ALL
+    SELECT 
+        *,
+        'C' as cabin_class,
+        business_class_authorized_pax as authorized_pax_qty
+    FROM authorized_pax
+    UNION ALL
+    SELECT 
+        *,
+        'W' as cabin_class,
+        premium_economy_authorized_pax as authorized_pax_qty
+    FROM authorized_pax
+    UNION ALL
+    SELECT 
+        *,
+        'Y' as cabin_class,
+        economy_authorized_pax as authorized_pax_qty
+    FROM authorized_pax
+)
+WHERE authorized_pax_qty IS NOT NULL
