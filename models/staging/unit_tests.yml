@@ -1,0 +1,19 @@
+unit_tests:
+  - name: test_gfa_value_extraction
+    model: stg_flight_core_hist
+    description: "Check that the GFA value extraction logic correctly handles various input scenarios"
+    given:
+      - input: ref('flight_core_hist')
+        rows:
+          - {OPERAT_AIRLN_IATA_CD: 'AA', OPERAT_FLIGHT_NBR: '100', SCHD_LEG_DEP_LCL_DT: '2024-07-21', SCHD_LEG_DEP_AIRPRT_IATA_CD: 'LAX', FLIGHT_KEY_CD: 'AA100LAX20240721', TRANS_TXT: 'GFA@F10/C20/W30/Y140', SABRE_TRANS_UTC_TMS: '2024-07-20 18:00:00'}
+          - {OPERAT_AIRLN_IATA_CD: 'UA', OPERAT_FLIGHT_NBR: '200', SCHD_LEG_DEP_LCL_DT: '2024-07-21', SCHD_LEG_DEP_AIRPRT_IATA_CD: 'SFO', FLIGHT_KEY_CD: 'UA200SFO20240721', TRANS_TXT: 'GFA@F5/C15/W25/Y100', SABRE_TRANS_UTC_TMS: '2024-07-20 19:00:00'}
+          - {OPERAT_AIRLN_IATA_CD: 'DL', OPERAT_FLIGHT_NBR: '300', SCHD_LEG_DEP_LCL_DT: '2024-07-21', SCHD_LEG_DEP_AIRPRT_IATA_CD: 'ATL', FLIGHT_KEY_CD: 'DL300ATL20240721', TRANS_TXT: 'GFA@C30/W40/Y150', SABRE_TRANS_UTC_TMS: '2024-07-20 20:00:00'}
+          - {OPERAT_AIRLN_IATA_CD: 'AA', OPERAT_FLIGHT_NBR: '400', SCHD_LEG_DEP_LCL_DT: '2024-07-21', SCHD_LEG_DEP_AIRPRT_IATA_CD: 'JFK', FLIGHT_KEY_CD: 'AA400JFK20240721', TRANS_TXT: 'NOT_GFA@F8/C18/W28/Y120', SABRE_TRANS_UTC_TMS: '2024-07-20 21:00:00'}
+          - {OPERAT_AIRLN_IATA_CD: 'UA', OPERAT_FLIGHT_NBR: '500', SCHD_LEG_DEP_LCL_DT: '2024-07-21', SCHD_LEG_DEP_AIRPRT_IATA_CD: 'ORD', FLIGHT_KEY_CD: 'UA500ORD20240721', TRANS_TXT: 'GFA@F12/C22/W32/Y130', SABRE_TRANS_UTC_TMS: '2024-07-20 22:00:00'}
+    expect:
+      rows:
+        - {airline_code: 'AA', flight_number: '100', departure_date: '2024-07-21', departure_airport: 'LAX', flight_key: 'AA100LAX20240721', gfa_first_class: 10, gfa_business_class: 20, gfa_premium_economy: 30, gfa_economy: 140}
+        - {airline_code: 'UA', flight_number: '200', departure_date: '2024-07-21', departure_airport: 'SFO', flight_key: 'UA200SFO20240721', gfa_first_class: 5, gfa_business_class: 15, gfa_premium_economy: 25, gfa_economy: 100}
+        - {airline_code: 'DL', flight_number: '300', departure_date: '2024-07-21', departure_airport: 'ATL', flight_key: 'DL300ATL20240721', gfa_first_class: null, gfa_business_class: 30, gfa_premium_economy: 40, gfa_economy: 150}
+        - {airline_code: 'AA', flight_number: '400', departure_date: '2024-07-21', departure_airport: 'JFK', flight_key: 'AA400JFK20240721', gfa_first_class: null, gfa_business_class: null, gfa_premium_economy: null, gfa_economy: null}
+        - {airline_code: 'UA', flight_number: '500', departure_date: '2024-07-21', departure_airport: 'ORD', flight_key: 'UA500ORD20240721', gfa_first_class: 12, gfa_business_class: 22, gfa_premium_economy: 32, gfa_economy: 130}

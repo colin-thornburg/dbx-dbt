@@ -13,10 +13,26 @@ renamed AS (
         SABRE_TRANS_UTC_TMS AS sabre_transaction_timestamp,
         SCHD_AIRCFT_TYPE_CD AS aircraft_type,
         SCHD_AIRCFT_CONFIG_CD AS aircraft_config,
-        CAST(gfa_value_F AS INT) AS gfa_first_class,
-        CAST(gfa_value_C AS INT) AS gfa_business_class,
-        CAST(gfa_value_W AS INT) AS gfa_premium_economy,
-        CAST(gfa_value_Y AS INT) AS gfa_economy
+        CASE 
+            WHEN TRANS_TXT LIKE 'GFA@%' THEN 
+                CAST(regexp_extract(TRANS_TXT, 'F(\\d+)', 1) AS INT)
+            ELSE NULL 
+        END AS gfa_first_class,
+        CASE 
+            WHEN TRANS_TXT LIKE 'GFA@%' THEN 
+                CAST(regexp_extract(TRANS_TXT, 'C(\\d+)', 1) AS INT)
+            ELSE NULL 
+        END AS gfa_business_class,
+        CASE 
+            WHEN TRANS_TXT LIKE 'GFA@%' THEN 
+                CAST(regexp_extract(TRANS_TXT, 'W(\\d+)', 1) AS INT)
+            ELSE NULL 
+        END AS gfa_premium_economy,
+        CASE 
+            WHEN TRANS_TXT LIKE 'GFA@%' THEN 
+                CAST(regexp_extract(TRANS_TXT, 'Y(\\d+)', 1) AS INT)
+            ELSE NULL 
+        END AS gfa_economy
     FROM source
 ),
 

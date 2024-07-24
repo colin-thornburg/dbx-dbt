@@ -38,29 +38,9 @@ combined_data AS (
 
 SELECT
     *,
-    CASE
-        WHEN gfa_first_class IS NULL AND first_class_broken_seats IS NULL THEN NULL
-        WHEN gfa_first_class IS NOT NULL AND first_class_broken_seats IS NULL THEN gfa_first_class
-        WHEN first_class_broken_seats IS NOT NULL AND gfa_first_class IS NULL THEN (gfa_first_class - first_class_broken_seats)
-        WHEN COALESCE(first_class_broken_message_timestamp, '1900-01-01 00:00:00') < sabre_transaction_timestamp THEN gfa_first_class
-        ELSE (gfa_first_class - first_class_broken_seats)
-    END AS first_class_authorized_pax,
-    
-    CASE
-        WHEN gfa_business_class IS NULL AND business_class_broken_seats IS NULL THEN NULL
-        WHEN gfa_business_class IS NOT NULL AND business_class_broken_seats IS NULL THEN gfa_business_class
-        WHEN business_class_broken_seats IS NOT NULL AND gfa_business_class IS NULL THEN (gfa_business_class - business_class_broken_seats)
-        WHEN COALESCE(business_class_broken_message_timestamp, '1900-01-01 00:00:00') < sabre_transaction_timestamp THEN gfa_business_class
-        ELSE (gfa_business_class - business_class_broken_seats)
-    END AS business_class_authorized_pax,
-    
-    CASE
-        WHEN gfa_premium_economy IS NULL AND premium_economy_broken_seats IS NULL THEN NULL
-        WHEN gfa_premium_economy IS NOT NULL AND premium_economy_broken_seats IS NULL THEN gfa_premium_economy
-        WHEN premium_economy_broken_seats IS NOT NULL AND gfa_premium_economy IS NULL THEN (gfa_premium_economy - premium_economy_broken_seats)
-        WHEN COALESCE(premium_economy_broken_message_timestamp, '1900-01-01 00:00:00') < sabre_transaction_timestamp THEN gfa_premium_economy
-        ELSE (gfa_premium_economy - premium_economy_broken_seats)
-    END AS premium_economy_authorized_pax,
+    {{ first_class_authorized_pax() }} as first_class_authorized_pax,
+     {{ business_class_authorized_pax() }} as business_class_authorized_pax,
+    {{ premium_economy_authorized_pax() }} as premium_economy_authorized_pax,
     
     CASE
         WHEN gfa_economy IS NULL AND economy_broken_seats IS NULL THEN NULL
