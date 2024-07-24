@@ -4,16 +4,27 @@
     on_schema_change='fail'
 ) }}
 
-WITH authorized_pax AS (
-    SELECT * 
-    FROM {{ ref('int_authorized_pax_qty') }}
-    {% if is_incremental() %}
-    WHERE sabre_transaction_timestamp > (
-        SELECT COALESCE(MAX(sabre_transaction_timestamp), '1900-01-01') 
-        FROM {{ this }}
-    )
-    {% endif %}
+{% if is_incremental() %}
+
+WITH max_timestamp AS (
+    SELECT COALESCE(MAX(sabre_transaction_timestamp), '1900-01-01') AS max_timestamp
+    FROM {{ this }}
+),
+
+authorized_pax AS (
+    SELECT a.*
+    FROM {{ ref('int_authorized_pax_qty') }} a
+    CROSS JOIN max_timestamp
+    WHERE a.sabre_transaction_timestamp > max_timestamp.max_timestamp
 )
+
+{% else %}
+
+WITH authorized_pax AS (
+    SELECT * FROM {{ ref('int_authorized_pax_qty') }}
+)
+
+{% endif %}
 
 SELECT
     airline_code,
