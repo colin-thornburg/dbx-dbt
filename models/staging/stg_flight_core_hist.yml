@@ -1,9 +1,8 @@
 version: 2
 
 models:
-  - name: fct_flight_cabin_auth_pax
-    access: public
-    description: "Fact table for authorized passengers per cabin class for each flight."
+  - name: stg_flight_core_hist
+    description: "Staging model for flight core history data, including GFA value extraction."
     columns:
       - name: airline_code
         description: "IATA code of the airline operating the flight."
@@ -25,15 +24,22 @@ models:
         description: "Unique key for the flight."
         tests:
           - not_null
-      - name: cabin_class
-        description: "Class of the cabin (F, C, W, Y)."
-        tests:
-          - not_null
-      - name: authorized_pax_qty
-        description: "Quantity of authorized passengers in the cabin class."
-        tests:
-          - not_null
+          - unique
+      - name: transaction_text
+        description: "Text of the transaction."
       - name: sabre_transaction_timestamp
         description: "Timestamp of the Sabre transaction."
         tests:
           - not_null
+      - name: aircraft_type
+        description: "Type of the aircraft."
+      - name: aircraft_config
+        description: "Configuration of the aircraft."
+      - name: gfa_first_class
+        description: "GFA value for first class."
+      - name: gfa_business_class
+        description: "GFA value for business class."
+      - name: gfa_premium_economy
+        description: "GFA value for premium economy."
+      - name: gfa_economy
+        description: "GFA value for economy."

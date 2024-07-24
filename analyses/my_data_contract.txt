@@ -2,8 +2,8 @@ version: 2
 
 models:
   - name: fct_flight_cabin_auth_pax
-    description: "Description of your model"
     access: public
+    description: "Fact table for authorized passengers per cabin class for each flight."
     config:
       contract:
         enforced: true
