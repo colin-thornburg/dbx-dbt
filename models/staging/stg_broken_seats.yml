@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: stg_broken_seats
+    description: "Staging model for broken seats data, including cabin codes and broken seats information."
+    columns:
+      - name: airline_code
+        description: "IATA code of the airline operating the flight."
+        tests:
+          - not_null
+      - name: flight_number
+        description: "Flight number assigned by the airline."
+        tests:
+          - not_null
+      - name: departure_date
+        description: "Scheduled local departure date of the flight."
+        tests:
+          - not_null
+      - name: departure_airport
+        description: "IATA code of the departure airport."
+        tests:
+          - not_null
+      - name: flight_key
+        description: "Unique key for the flight."
+        tests:
+          - not_null
+          - unique
+      - name: first_class_cabin_code
+        description: "Cabin code for first class."
+      - name: business_class_cabin_code
+        description: "Cabin code for business class."
+      - name: premium_economy_cabin_code
+        description: "Cabin code for premium economy class."
+      - name: economy_cabin_code
+        description: "Cabin code for economy class."
+      - name: first_class_broken_message_timestamp
+        description: "Timestamp when the first class broken seats message was created."
+      - name: business_class_broken_message_timestamp
+        description: "Timestamp when the business class broken seats message was created."
+      - name: premium_economy_broken_message_timestamp
+        description: "Timestamp when the premium economy broken seats message was created."
+      - name: economy_broken_message_timestamp
+        description: "Timestamp when the economy broken seats message was created."
+      - name: first_class_broken_seats
+        description: "Number of broken seats in first class."
+      - name: business_class_broken_seats
+        description: "Number of broken seats in business class."
+      - name: premium_economy_broken_seats
+        description: "Number of broken seats in premium economy class."
+      - name: economy_broken_seats
+        description: "Number of broken seats in economy class."

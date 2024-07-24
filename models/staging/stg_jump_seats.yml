@@ -1,9 +1,8 @@
 version: 2
 
 models:
-  - name: fct_flight_cabin_auth_pax
-    access: public
-    description: "Fact table for authorized passengers per cabin class for each flight."
+  - name: stg_jump_seats
+    description: "Staging model for jump seats data, including quantity of jump seats."
     columns:
       - name: airline_code
         description: "IATA code of the airline operating the flight."
@@ -25,15 +24,8 @@ models:
         description: "Unique key for the flight."
         tests:
           - not_null
-      - name: cabin_class
-        description: "Class of the cabin (F, C, W, Y)."
-        tests:
-          - not_null
-      - name: authorized_pax_qty
-        description: "Quantity of authorized passengers in the cabin class."
-        tests:
-          - not_null
-      - name: sabre_transaction_timestamp
-        description: "Timestamp of the Sabre transaction."
+          - unique
+      - name: jump_seat_quantity
+        description: "Quantity of jump seats available on the flight."
         tests:
           - not_null
