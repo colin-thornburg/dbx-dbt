@@ -1,0 +1,108 @@
+df_auth_pax_qty = spark.sql(f"""SELECT
+                                      FCH.OPERAT_AIRLN_IATA_CD AS AUTH_AIRLN_IATA_CD
+                                    , FCH.OPERAT_FLIGHT_NBR AS AUTH_FLIGHT_NBR
+                                    , FCH.SCHD_LEG_DEP_LCL_DT AS AUTH_DEP_DT
+                                    , FCH.SCHD_LEG_DEP_AIRPRT_IATA_CD AS AUTH_DEP_IATA_CD
+                                    , FCH.SABRE_TRANS_UTC_TMS AS SABRE_TRANS_UTC_TMS
+                                    , CAST(FCH.gfa_value_F AS SMALLINT) as F_GFA
+                                    , CAST(FCH.gfa_value_C AS SMALLINT) as C_GFA
+                                    , CAST(FCH.gfa_value_W AS SMALLINT) as W_GFA
+                                    , CAST(FCH.gfa_value_Y AS SMALLINT) as Y_GFA
+                                    , BRK.F_CABIN_CD AS BRK_F_CABIN_CD
+                                    , BRK.C_CABIN_CD AS BRK_C_CABIN_CD
+                                    , BRK.W_CABIN_CD AS BRK_W_CABIN_CD
+                                    , BRK.Y_CABIN_CD AS BRK_Y_CABIN_CD
+                                    , BRK.F_BRK_MSG_CREATE_TMS AS F_BRK_MSG_CREATE_TMS
+                                    , BRK.C_BRK_MSG_CREATE_TMS AS C_BRK_MSG_CREATE_TMS
+                                    , BRK.W_BRK_MSG_CREATE_TMS AS W_BRK_MSG_CREATE_TMS
+                                    , BRK.Y_BRK_MSG_CREATE_TMS AS Y_BRK_MSG_CREATE_TMS
+                                    , BRK.F_BRKN_SEATS AS F_BRKN_SEATS
+                                    , BRK.C_BRKN_SEATS AS C_BRKN_SEATS
+                                    , BRK.W_BRKN_SEATS AS W_BRKN_SEATS
+                                    , BRK.Y_BRKN_SEATS AS Y_BRKN_SEATS
+                                    , P.JUMP_SEAT_QTY AS JUMP_SEAT_QTY
+                                    FROM
+                                    (
+                                    SELECT OPERAT_AIRLN_IATA_CD, OPERAT_FLIGHT_NBR, SCHD_LEG_DEP_LCL_DT, SCHD_LEG_DEP_AIRPRT_IATA_CD, FLIGHT_KEY_CD, TRANS_TXT, SABRE_TRANS_UTC_TMS, SCHD_AIRCFT_TYPE_CD, SCHD_AIRCFT_CONFIG_CD
+                                          ,case when TRANS_TXT like 'GFA@%' and trim(regexp_extract(TRANS_TXT, r'.*/F(\d+)$', 1)) <> '' then regexp_extract(TRANS_TXT, r'.*/F(\d+)$', 1) else NULL end as gfa_value_F
+                                          ,case when TRANS_TXT like 'GFA@%' and trim(regexp_extract(TRANS_TXT, r'.*/C(\d+)$', 1)) <> '' then regexp_extract(TRANS_TXT, r'.*/C(\d+)$', 1) else NULL end as gfa_value_C
+                                          ,case when TRANS_TXT like 'GFA@%' and trim(regexp_extract(TRANS_TXT, r'.*/W(\d+)$', 1)) <> '' then regexp_extract(TRANS_TXT, r'.*/W(\d+)$', 1) else NULL end as gfa_value_W
+                                          ,case when TRANS_TXT like 'GFA@%' and trim(regexp_extract(TRANS_TXT, r'.*/Y(\d+)$', 1)) <> '' then regexp_extract(TRANS_TXT, r'.*/Y(\d+)$', 1) else NULL end as gfa_value_Y
+
+                                    FROM SBDCS_prod_PKG.FLIGHT_CORE_HIST
+                                    WHERE SCHD_LEG_DEP_LCL_DT BETWEEN current_date()-3 and current_date()
+                                      AND TRANS_TXT like 'GFA@%'
+                                    qualify row_number() over (partition by OPERAT_AIRLN_IATA_CD, OPERAT_FLIGHT_NBR, SCHD_LEG_DEP_LCL_DT, SCHD_LEG_DEP_AIRPRT_IATA_CD order by msg_id desc)=1
+                                      ) FCH
+                                    LEFT OUTER JOIN (SELECT OPERAT_AIRLN_IATA_CD, OPERAT_FLIGHT_NBR, SCHD_LEG_DEP_LCL_DT, SCHD_LEG_DEP_AIRPRT_IATA_CD, FLIGHT_KEY_CD,
+                                                count(case when TRIM(SEAT_LETTER_CD) = 'X' THEN 1 ELSE NULL END) as JUMP_SEAT_QTY
+                                                FROM SBDCS_prod_PKG.FLIGHT_PAX_CORE
+                                                WHERE SCHD_LEG_DEP_LCL_DT BETWEEN current_date()-3 and current_date()
+                                                  AND ONBRD_IND
+                                                  AND SEG_CANCEL_LCL_TMS IS NULL                                              
+                                                GROUP BY OPERAT_AIRLN_IATA_CD, OPERAT_FLIGHT_NBR, SCHD_LEG_DEP_LCL_DT, SCHD_LEG_DEP_AIRPRT_IATA_CD, FLIGHT_KEY_CD) P
+                                    ON FCH.SCHD_LEG_DEP_LCL_DT = P.SCHD_LEG_DEP_LCL_DT
+                                   AND FCH.FLIGHT_KEY_CD = P.FLIGHT_KEY_CD
+                                  /* Broken Seats for each Cabin */      
+                                  LEFT OUTER JOIN (SELECT B.OPERAT_AIRLN_IATA_CD
+                                                        , B.OPERAT_FLIGHT_NBR
+                                                        , B.SCHD_LEG_DEP_LCL_DT
+                                                        , B.SCHD_LEG_DEP_AIRPRT_IATA_CD
+                                                        , B.FLIGHT_KEY_CD
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'F' THEN 'F' ELSE NULL END) AS F_CABIN_CD
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'C' THEN 'C' ELSE NULL END) AS C_CABIN_CD
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'W' THEN 'W' ELSE NULL END) AS W_CABIN_CD
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'Y' THEN 'Y' ELSE NULL END) AS Y_CABIN_CD
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'F' THEN B.MSG_CREATE_UTC_TMS ELSE NULL END) as F_BRK_MSG_CREATE_TMS
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'C' THEN B.MSG_CREATE_UTC_TMS ELSE NULL END) as C_BRK_MSG_CREATE_TMS
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'W' THEN B.MSG_CREATE_UTC_TMS ELSE NULL END) as W_BRK_MSG_CREATE_TMS
+                                                        , MAX(CASE WHEN mms.Cabin_cd = 'Y' THEN B.MSG_CREATE_UTC_TMS ELSE NULL END) as Y_BRK_MSG_CREATE_TMS
+                                                        , (COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Block' AND mms.Cabin_cd = 'F' then 1 else null end) - COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Unblock' AND mms.Cabin_cd = 'F' then 1 else null end)) as F_BRKN_SEATS
+                                                        , (COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Block' AND mms.Cabin_cd = 'C' then 1 else null end) - COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Unblock' AND mms.Cabin_cd = 'C' then 1 else null end)) as C_BRKN_SEATS
+                                                        , (COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Block' AND mms.Cabin_cd = 'W' then 1 else null end) - COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Unblock' AND mms.Cabin_cd = 'W' then 1 else null end)) as W_BRKN_SEATS
+                                                        , (COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Block' AND mms.Cabin_cd = 'Y' then 1 else null end) - COUNT(case when B.SEAT_BLOCK_UNBLOCK_CD = 'Unblock' AND mms.Cabin_cd = 'Y' then 1 else null end)) as Y_BRKN_SEATS
+                                                    FROM SBDCS_prod_PKG.FLIGHT_CORE_SEAT_BLOCK B
+                                                    INNER JOIN SBDCS_prod_PKG.FLIGHT_CORE FC
+                                                            ON FC.SCHD_LEG_DEP_LCL_DT = B.SCHD_LEG_DEP_LCL_DT
+                                                           AND FC.FLIGHT_KEY_CD = B.FLIGHT_KEY_CD
+                                                    INNER JOIN seatmap_prod_prep.MASTER_MAP_SEAT mms
+                                                    on mms.MASTER_MAP_GROUP_CD = FC.SCHD_AIRCFT_TYPE_CD
+                                                    and mms.EQUIP_CONFGRTN_NBR = FC.SCHD_AIRCFT_CONFIG_CD
+                                                    and mms.SEAT_NBR = trim(B.SEAT_ROW_ID)||trim(B.SEAT_LETTER_CD)
+                                                    WHERE B.SEAT_BLOCK_TYPE_CD = '$'
+                                                      AND B.SCHD_LEG_DEP_LCL_DT BETWEEN current_date()-3 and current_date()
+                                                      AND FC.SCHD_LEG_DEP_LCL_DT BETWEEN current_date()-3 and current_date()
+                                                    GROUP BY B.OPERAT_AIRLN_IATA_CD, B.OPERAT_FLIGHT_NBR, B.SCHD_LEG_DEP_LCL_DT, B.SCHD_LEG_DEP_AIRPRT_IATA_CD, B.FLIGHT_KEY_CD) BRK
+                                                    ON FCH.SCHD_LEG_DEP_LCL_DT = BRK.SCHD_LEG_DEP_LCL_DT
+                                                   AND FCH.FLIGHT_KEY_CD = BRK.FLIGHT_KEY_CD
+                                                """)
+
+
+df_flt_cabin_auth_pax = (df_auth_pax_qty.withColumn("F_AUTHRZ_PAX_QTY", expr("case when F_GFA is null and F_BRKN_SEATS is null then F_CABIN_SEAT_QTY \
+                                                                                             when F_GFA is not null and F_BRKN_SEATS is null then F_GFA \
+                                                                                             when F_BRKN_SEATS is not null and F_GFA is null then (F_CABIN_SEAT_QTY-F_BRKN_SEATS) \
+                                                                                             when coalesce(F_BRK_MSG_CREATE_TMS, '1900-01-01 00:00:00') < SABRE_TRANS_UTC_TMS then F_GFA \
+                                                                                             when coalesce(SABRE_TRANS_UTC_TMS, '1900-01-01 00:00:00') < F_BRK_MSG_CREATE_TMS then (F_GFA-F_BRKN_SEATS) end"))
+                                                .withColumn("C_AUTHRZ_PAX_QTY", expr("case when C_GFA is null and C_BRKN_SEATS is null then C_CABIN_SEAT_QTY \
+                                                                                             when C_GFA is not null and C_BRKN_SEATS is null then C_GFA \
+                                                                                             when C_BRKN_SEATS is not null and C_GFA is null then (C_CABIN_SEAT_QTY-C_BRKN_SEATS) \
+                                                                                             when coalesce(C_BRK_MSG_CREATE_TMS, '1900-01-01 00:00:00') < SABRE_TRANS_UTC_TMS then C_GFA \
+                                                                                             when coalesce(SABRE_TRANS_UTC_TMS, '1900-01-01 00:00:00') < C_BRK_MSG_CREATE_TMS then (C_GFA-C_BRKN_SEATS) end"))
+                                                .withColumn("W_AUTHRZ_PAX_QTY", expr("case when W_GFA is null and W_BRKN_SEATS is null then W_CABIN_SEAT_QTY \
+                                                                                             when W_GFA is not null and W_BRKN_SEATS is null then W_GFA \
+                                                                                             when W_BRKN_SEATS is not null and W_GFA is null then (W_CABIN_SEAT_QTY-W_BRKN_SEATS) \
+                                                                                             when coalesce(W_BRK_MSG_CREATE_TMS, '1900-01-01 00:00:00') < SABRE_TRANS_UTC_TMS then W_GFA \
+                                                                                             when coalesce(SABRE_TRANS_UTC_TMS, '1900-01-01 00:00:00') < W_BRK_MSG_CREATE_TMS then (W_GFA-W_BRKN_SEATS) end"))
+                                                .withColumn("Y_AUTHRZ_PAX_QTY", expr("case when Y_GFA is null and Y_BRKN_SEATS is null then Y_CABIN_SEAT_QTY \
+                                                                                             when Y_GFA is not null and Y_BRKN_SEATS is null then Y_GFA \
+                                                                                             when Y_BRKN_SEATS is not null and Y_GFA is null then (Y_CABIN_SEAT_QTY-Y_BRKN_SEATS-JUMP_SEAT_QTY) \
+                                                                                             when coalesce(Y_BRK_MSG_CREATE_TMS, '1900-01-01 00:00:00') < SABRE_TRANS_UTC_TMS then Y_GFA \
+                                                                                             when coalesce(SABRE_TRANS_UTC_TMS, '1900-01-01 00:00:00') < Y_BRK_MSG_CREATE_TMS then (Y_GFA-Y_BRKN_SEATS) end"))
+                           )
+
+
+df_flight_core_cabin5 = (df_flt_cabin_auth_pax.selectExpr("AUTH_AIRLN_IATA_CD", "AUTH_FLIGHT_NBR", "SCHD_LEG_DEP_AIRPRT_IATA_CD", "AUTH_DEP_DT", "AUTH_DEP_IATA_CD",
+                                                            "inline_outer(arrays_zip(array(F_AUTHRZ_PAX_QTY, C_AUTHRZ_PAX_QTY, W_AUTHRZ_PAX_QTY, Y_AUTHRZ_PAX_QTY))) \
+                                                                               as (AUTHRZ_PAX_QTY)"
+                                                            )
+                        )
