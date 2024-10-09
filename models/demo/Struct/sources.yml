@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: survey_data
+    database: colint_dev  
+    schema: dbt_cthornburg
+    tables:
+      - name: structured_survey_data
