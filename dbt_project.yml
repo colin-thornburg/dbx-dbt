@@ -44,3 +44,10 @@ models:
       +materialized: view
     marts: 
       +materialized: table
+    demo:
+      Struct:
+        +materialized: table
+      Prep:
+        +materialized: view
+      Package:
+        +materialized: table
