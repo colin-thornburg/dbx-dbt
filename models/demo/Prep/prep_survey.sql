@@ -3,7 +3,7 @@
 WITH distinct_surveys AS (
   SELECT DISTINCT
     SurveyResponseIdentifier
-  FROM {{ source('survey_data', 'structured_survey_data') }}
+  FROM {{ source('survey_data','cast_survey_data') }}
 ),
 
 numbered_surveys AS (
@@ -23,5 +23,5 @@ flight_numbers AS (
 SELECT
   s.*,
   f.flight_number
-FROM {{ source('survey_data', 'structured_survey_data') }} s
+FROM {{ source('survey_data','cast_survey_data') }} s
 JOIN flight_numbers f ON s.SurveyResponseIdentifier = f.SurveyResponseIdentifier

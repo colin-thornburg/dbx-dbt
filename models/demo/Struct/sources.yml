@@ -2,7 +2,11 @@ version: 2
 
 sources:
   - name: survey_data
-    database: colint_dev  
+    database: hive_metastore  
     schema: dbt_cthornburg
     tables:
-      - name: structured_survey_data
+      - name: cast_survey_data
+        loaded_at_field: SourceExtractBeginTimestamp_cast
+        freshness:
+          warn_after: {count: 4, period: day}
+          error_after: {count: 5, period: day}
