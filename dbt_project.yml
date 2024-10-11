@@ -49,5 +49,3 @@ models:
         +materialized: table
       Prep:
         +materialized: view
-      Package:
-        +materialized: table
