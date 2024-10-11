@@ -1,0 +1,6 @@
+version: 2
+
+models:
+  - name: prep_survey_data_pivot
+    access: public
+    description: "Pivoted data for survey analysis"
